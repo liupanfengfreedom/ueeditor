@@ -47,6 +47,7 @@ class EDITORASSITANT_API UControlCenter : public UObject
 	FMessagePackage command;
 	UFUNCTION()
 	void OnTcpResponse(const TArray<uint8>&p, const FString & str);
+	void findmeshpath(FName & path);
 public:
 	bool ConnectServer();
 	class UWorld* world;

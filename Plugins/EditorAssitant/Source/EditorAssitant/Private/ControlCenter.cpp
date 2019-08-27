@@ -7,6 +7,9 @@
 #include "Json.h"
 #if WITH_EDITORONLY_DATA
 #include "Editor/UnrealEd/Public/Editor.h"
+#include "AssetRegistryModule.h"
+#include "AssetToolsModule.h"
+#include "IAssetTools.h"
 #endif
 
 class TcpClientv* UControlCenter::mtcp = nullptr;
@@ -68,17 +71,52 @@ void UControlCenter::thwork()
 		TArray<FString> payloadmessage;
 		SplitString(message, payloadmessage);
 		//FName path = "/Game/VehicleBP/Maps/VehicleExampleMap";
-		FName path = FName(*payloadmessage[0]);
+		//FName path = FName(*payloadmessage[0]);
+		FName path = "";
+		findmeshpath(path);
 		int32 MyNewInt = FCString::Atoi(*payloadmessage[1]);
-		UEditorFunctionLibrary::AssignID(path,MyNewInt);
-		FMessagePackage mp;
-		mp.MT = MessageType::ASSIGNOK;	
-		FString outstring;
-		FJsonObjectConverter::UStructToJsonObjectString<FMessagePackage>(mp, outstring);
-		mtcp->Send(outstring);
+		MyNewInt = 1;
+		if (path.IsEqual(""))
+		{
+
+		}
+		else
+		{
+			UEditorFunctionLibrary::AssignID(path, MyNewInt);
+			FMessagePackage mp;
+			mp.MT = MessageType::ASSIGNOK;
+			mp.PayLoad = path.ToString();
+			FString outstring;
+			FJsonObjectConverter::UStructToJsonObjectString<FMessagePackage>(mp, outstring);
+			mtcp->Send(outstring);
+		}
+
 
 	}
 
 }
+void UControlCenter::findmeshpath(FName & path)
+{
+	FAssetRegistryModule* AssetRegistryModule = &FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
+	TArray<FAssetData> AssetData;
+	FARFilter Filter = FARFilter();
 
+	// Classes
+	Filter.ClassNames.Add(FName("SkeletalMesh"));
+	Filter.ClassNames.Add(FName("StaticMesh"));
+
+	FString Directory = "";
+	FString DirPrefix = Directory.IsEmpty() ? "/Game" : "/Game/";
+	Filter.PackagePaths.Add(FName(*(DirPrefix + Directory)));
+
+	// Flags
+	Filter.bRecursiveClasses = true;
+	Filter.bRecursivePaths = true;
+
+	AssetRegistryModule->Get().GetAssets(Filter, AssetData);
+	if (AssetData.Num() > 0)
+	{
+		path = AssetData[0].PackageName;
+	}
+}
 
