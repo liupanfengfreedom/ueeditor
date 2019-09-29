@@ -73,7 +73,7 @@ void UControlCenter::thwork()
 		//FName path = "/Game/VehicleBP/Maps/VehicleExampleMap";
 		//FName path = FName(*payloadmessage[0]);
 		FName path = "";
-		findmeshpath(path);
+		findassetpath(path);
 		int32 MyNewInt = FCString::Atoi(*payloadmessage[1]);
 		MyNewInt = 1;
 		if (path.IsEqual(""))
@@ -95,28 +95,61 @@ void UControlCenter::thwork()
 	}
 
 }
-void UControlCenter::findmeshpath(FName & path)
+void UControlCenter::findassetpath(FName&path)
 {
-	FAssetRegistryModule* AssetRegistryModule = &FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
+	findmeshpath(path, "Blueprint");
+	if (!path.IsEqual(""))//if Blueprint is exist just return Blueprint
+	{
+		return;
+	}
+	findmeshpath(path, "StaticMesh");
+	if (!path.IsEqual(""))//if Blueprint not exist but StaticMesh is exist just return StaticMesh
+	{
+		return;
+	}
+	findmeshpath(path, "SkeletalMesh");
+	if (!path.IsEqual(""))//if Blueprint and SkeletalMesh both not exist but SkeletalMesh is exist just return StaticMesh
+	{
+		FName subpath;
+		findmeshpath(subpath, "AnimSequence");
+		if (!subpath.IsEqual(""))
+		{
+			FString strpath = path.ToString();
+			strpath = strpath + "?" + subpath.ToString();
+			path = *strpath;
+			return;
+		}
+	}
+}
+void UControlCenter::findmeshpath(FName & path,const FName& pclassname)
+{
+	FAssetRegistryModule* AssetRegistryModule = &FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));	
 	TArray<FAssetData> AssetData;
 	FARFilter Filter = FARFilter();
-
-	// Classes
-	Filter.ClassNames.Add(FName("SkeletalMesh"));
-	Filter.ClassNames.Add(FName("StaticMesh"));
-
+	Filter.ClassNames.Add(pclassname);
 	FString Directory = "";
 	FString DirPrefix = Directory.IsEmpty() ? "/Game" : "/Game/";
 	Filter.PackagePaths.Add(FName(*(DirPrefix + Directory)));
-
-	// Flags
 	Filter.bRecursiveClasses = true;
 	Filter.bRecursivePaths = true;
-
 	AssetRegistryModule->Get().GetAssets(Filter, AssetData);
-	if (AssetData.Num() > 0)
+
+	for (int i = 0; i < AssetData.Num(); i++)
 	{
-		path = AssetData[0].PackageName;
+		if (!AssetData[i].AssetClass.IsEqual(pclassname))
+		{
+			AssetData.RemoveAt(i);
+		}
 	}
+	int len = AssetData.Num();
+	if (len == 0)
+	{
+		return;
+	}
+	TArray<FStringFormatArg>FormatArray;
+	FormatArray.Add(FStringFormatArg(AssetData[0].AssetClass.ToString()));
+	FormatArray.Add(FStringFormatArg(AssetData[0].ObjectPath.ToString()));
+	FString referencepath = FString::Format(TEXT("{0}'{1}'"), FormatArray);
+	path = *referencepath;
 }
 

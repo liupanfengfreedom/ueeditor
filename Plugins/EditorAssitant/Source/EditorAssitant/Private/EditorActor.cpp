@@ -29,6 +29,8 @@ void AEditorActor::OnObjectSelected(UObject* Object)
 	{
 		if (mmcc)
 		{
+			FName pathname;
+			mmcc->findassetpath(pathname);
 			return;
 		}
 		mmcc = NewObject<UControlCenter>();
