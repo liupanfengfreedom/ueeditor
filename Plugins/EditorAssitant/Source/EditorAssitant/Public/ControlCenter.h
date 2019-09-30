@@ -48,9 +48,9 @@ class EDITORASSITANT_API UControlCenter : public UObject
 	UFUNCTION()
 	void OnTcpResponse(const TArray<uint8>&p, const FString & str);
 	//classname:SkeletalMesh,StaticMesh,AnimBlueprint,Blueprint,AnimSequence
-	void findmeshpath(FName & path,const FName& classname);
+	void findmeshpath(FName & path, FName & pathforassignid,const FName& classname);
 public:
-	void findassetpath(FName&path);
+	void findassetpath(FName&path,FName&pathforassignid);
 public:
 	bool ConnectServer();
 	class UWorld* world;

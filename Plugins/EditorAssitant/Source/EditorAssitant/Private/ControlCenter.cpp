@@ -9,6 +9,7 @@
 #include "Editor/UnrealEd/Public/Editor.h"
 #include "AssetRegistryModule.h"
 #include "AssetToolsModule.h"
+#include "MyBlueprintFunctionLibrary.h"
 #include "IAssetTools.h"
 #endif
 
@@ -66,23 +67,27 @@ void UControlCenter::thwork()
 {
 	if (command.MT == MessageType::ASSIGNID)
 	{
+		UMyBlueprintFunctionLibrary::CLogtofile("command.MT == MessageType::ASSIGNID");
 		command.MT = MessageType::EMPTY;
 		FString message = command.PayLoad;
 		TArray<FString> payloadmessage;
 		SplitString(message, payloadmessage);
 		//FName path = "/Game/VehicleBP/Maps/VehicleExampleMap";
 		//FName path = FName(*payloadmessage[0]);
+	    //int32 MyNewInt = FCString::Atoi(*payloadmessage[1]);
+		//MyNewInt = 1;
 		FName path = "";
-		findassetpath(path);
-		int32 MyNewInt = FCString::Atoi(*payloadmessage[1]);
-		MyNewInt = 1;
+		FName pathforassignid = "";
+		findassetpath(path,pathforassignid);
+		UMyBlueprintFunctionLibrary::CLogtofile("--------------------------");
 		if (path.IsEqual(""))
 		{
 
 		}
 		else
 		{
-			UEditorFunctionLibrary::AssignID(path, MyNewInt);
+			UMyBlueprintFunctionLibrary::CLogtofile(path.ToString());
+			UEditorFunctionLibrary::AssignID(pathforassignid,1);
 			FMessagePackage mp;
 			mp.MT = MessageType::ASSIGNOK;
 			mp.PayLoad = path.ToString();
@@ -90,38 +95,40 @@ void UControlCenter::thwork()
 			FJsonObjectConverter::UStructToJsonObjectString<FMessagePackage>(mp, outstring);
 			mtcp->Send(outstring);
 		}
-
-
 	}
 
 }
-void UControlCenter::findassetpath(FName&path)
+void UControlCenter::findassetpath(FName&path,FName&pathforassignid)
 {
-	findmeshpath(path, "Blueprint");
+	UMyBlueprintFunctionLibrary::CLogtofile("Blueprint");
+	findmeshpath(path, pathforassignid, "Blueprint");
 	if (!path.IsEqual(""))//if Blueprint is exist just return Blueprint
 	{
 		return;
 	}
-	findmeshpath(path, "StaticMesh");
+	UMyBlueprintFunctionLibrary::CLogtofile("StaticMesh");
+	findmeshpath(path, pathforassignid, "StaticMesh");
 	if (!path.IsEqual(""))//if Blueprint not exist but StaticMesh is exist just return StaticMesh
 	{
 		return;
 	}
-	findmeshpath(path, "SkeletalMesh");
+	UMyBlueprintFunctionLibrary::CLogtofile("SkeletalMesh");
+	findmeshpath(path, pathforassignid, "SkeletalMesh");
 	if (!path.IsEqual(""))//if Blueprint and SkeletalMesh both not exist but SkeletalMesh is exist just return StaticMesh
 	{
 		FName subpath;
-		findmeshpath(subpath, "AnimSequence");
-		if (!subpath.IsEqual(""))
-		{
-			FString strpath = path.ToString();
-			strpath = strpath + "?" + subpath.ToString();
-			path = *strpath;
-			return;
-		}
+		//UMyBlueprintFunctionLibrary::CLogtofile("AnimSequence");
+		//findmeshpath(subpath, "AnimSequence");
+		//if (!subpath.IsEqual(""))
+		//{
+		//	FString strpath = path.ToString();
+		//	strpath = strpath + "?" + subpath.ToString();
+		//	path = *strpath;
+		//	return;
+		//}
 	}
 }
-void UControlCenter::findmeshpath(FName & path,const FName& pclassname)
+void UControlCenter::findmeshpath(FName & path, FName & pathforassignid,const FName& pclassname)
 {
 	FAssetRegistryModule* AssetRegistryModule = &FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));	
 	TArray<FAssetData> AssetData;
@@ -146,6 +153,7 @@ void UControlCenter::findmeshpath(FName & path,const FName& pclassname)
 	{
 		return;
 	}
+	pathforassignid = AssetData[0].PackageName;
 	TArray<FStringFormatArg>FormatArray;
 	FormatArray.Add(FStringFormatArg(AssetData[0].AssetClass.ToString()));
 	FormatArray.Add(FStringFormatArg(AssetData[0].ObjectPath.ToString()));
