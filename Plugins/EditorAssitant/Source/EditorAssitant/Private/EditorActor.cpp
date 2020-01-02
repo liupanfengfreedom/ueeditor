@@ -55,6 +55,7 @@ void AEditorActor::oneditormodtransitioned(FEdMode *  m)
 			return;
 		}
 		mmcc = NewObject<UControlCenter>();
+		mmcc->AddToRoot();
 		mmcc->world = GetWorld();
 		mmcc->ConnectServer();
 	}

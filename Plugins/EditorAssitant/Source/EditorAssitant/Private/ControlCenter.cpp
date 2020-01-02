@@ -24,7 +24,16 @@ bool UControlCenter::ConnectServer()
 	if (mtcp == nullptr)
 	{
 		mtcp = new TcpClientv();
-		isconnected = mtcp->Connecttoserver(192, 168, 1, 240, 8003);
+		isconnected = mtcp->Connecttoserver(172, 16,5,188, 8003);
+		//mtcp->OnTcpClientReceiveddatav1.BindLambda([this](const TArray<uint8>& p, const FString & str) {
+		//	UMyBlueprintFunctionLibrary::CLogtofile(FString(" UControlCenter::OnTcpResponse BindLambda：").Append(str));
+		//	FMessagePackage mp;
+		//	FJsonObjectConverter::JsonObjectStringToUStruct<FMessagePackage>(str, &mp, 0, 0);
+		//	if (mp.MT == MessageType::ASSIGNID)
+		//	{
+		//		command = mp;
+		//	}
+		//});
 		mtcp->OnTcpClientReceiveddata.AddDynamic(this, &UControlCenter::OnTcpResponse);
 		if (isconnected)
 		{
@@ -35,7 +44,7 @@ bool UControlCenter::ConnectServer()
 #endif
 		//UMyBlueprintFunctionLibrary::AddfunctiontoOnGameexitArray(&UTcpCommunicatorv1::clientexit);
 		check(world);
-		world->GetTimerManager().SetTimer(th, this, &UControlCenter::thwork, 0.5, true, 1);
+		//world->GetTimerManager().SetTimer(th, this, &UControlCenter::thwork, 1, true, 1);
 	}
 	return isconnected;
 }
@@ -56,15 +65,25 @@ void UControlCenter::clientexit(FEdMode * mm)
 }
 void UControlCenter::OnTcpResponse(const TArray<uint8>& p, const FString & str)
 {
+	UMyBlueprintFunctionLibrary::CLogtofile(FString(" UControlCenter::OnTcpResponse：").Append(str));
 	FMessagePackage mp;
 	FJsonObjectConverter::JsonObjectStringToUStruct<FMessagePackage>(str, &mp, 0, 0);
 	if (mp.MT == MessageType::ASSIGNID)
 	{
 		command = mp;
+		AsyncTask(
+		ENamedThreads::GameThread,
+		[this]()
+		{
+			thwork();
+		}
+		);
 	}
 }
 void UControlCenter::thwork()
 {
+	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("OnObjectSelected!"));
+	UMyBlueprintFunctionLibrary::CLogtofile("UControlCenter::thwork()");
 	if (command.MT == MessageType::ASSIGNID)
 	{
 		UMyBlueprintFunctionLibrary::CLogtofile("command.MT == MessageType::ASSIGNID");
@@ -80,9 +99,14 @@ void UControlCenter::thwork()
 		FName pathforassignid = "";
 		findassetpath(path,pathforassignid);
 		UMyBlueprintFunctionLibrary::CLogtofile("--------------------------");
-		if (path.IsEqual(""))
+		if (path =="")
 		{
-
+			FMessagePackage mp;
+			mp.MT = MessageType::ASSIGNOK;
+			mp.PayLoad = path.ToString();
+			FString outstring;
+			FJsonObjectConverter::UStructToJsonObjectString<FMessagePackage>(mp, outstring);
+			mtcp->Send(outstring);
 		}
 		else
 		{
@@ -126,6 +150,12 @@ void UControlCenter::findassetpath(FName&path,FName&pathforassignid)
 		//	path = *strpath;
 		//	return;
 		//}
+	}
+	UMyBlueprintFunctionLibrary::CLogtofile("AnimSequence");
+	findmeshpath(path, pathforassignid, "AnimSequence");
+	if (!path.IsEqual(""))//if Blueprint not exist but StaticMesh is exist just return StaticMesh
+	{
+		return;
 	}
 }
 void UControlCenter::findmeshpath(FName & path, FName & pathforassignid,const FName& pclassname)
